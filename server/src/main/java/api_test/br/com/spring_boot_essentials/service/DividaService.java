@@ -1,0 +1,53 @@
+package api_test.br.com.spring_boot_essentials.service;
+
+import api_test.br.com.spring_boot_essentials.model.DividaModel;
+import api_test.br.com.spring_boot_essentials.repository.DividaRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class DividaService {
+
+    private final DividaRepository dividaRepository;
+
+    @Transactional(readOnly = true)
+    public List<DividaModel> listarTodas() {
+        return dividaRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public DividaModel buscarPorId(Integer id) {
+        return dividaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dívida não encontrada com o ID: " + id));
+    }
+
+    public DividaModel salvar(DividaModel divida) {
+        return dividaRepository.save(divida);
+    }
+
+    public DividaModel atualizar(Integer id, DividaModel divida) {
+        buscarPorId(id);
+        return dividaRepository.save(divida);
+    }
+
+    public void deletar(Integer id) {
+        DividaModel divida = buscarPorId(id);
+        dividaRepository.delete(divida);
+    }
+
+    public DividaModel marcarComoPaga(Integer id) {
+        DividaModel divida = buscarPorId(id);
+        divida.setPaga(Boolean.TRUE);
+        divida.setDataPagamento(LocalDate.now());
+        return dividaRepository.save(divida);
+    }
+
+    public DividaModel registrarDivida(DividaModel novaDivida) {
+        return dividaRepository.save(novaDivida);
+    }
+}

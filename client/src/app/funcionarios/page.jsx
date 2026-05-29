@@ -1,0 +1,305 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Eye, Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
+import ModalFuncionario from "@/components/ModalFuncionario";
+import toast from "react-hot-toast";
+import {
+  atualizarFuncionario,
+  cadastrarFuncionario,
+  listarFuncionarios,
+  removerFuncionario,
+} from "@/services/funcionarioService";
+import { getApiErrorMessage } from "@/services/api";
+
+const formatarData = (data) => {
+  if (!data) return "Nao informada";
+  return new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR");
+};
+
+export default function FuncionariosPage() {
+  const [busca, setBusca] = useState("");
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    funcionarioEditando: null,
+    modoVisualizacao: false,
+  });
+
+  async function getFuncionarios(params) {
+    setIsLoading(true);
+
+    try {
+      const funcionarios = await listarFuncionarios(params);
+      setFuncionarios(funcionarios);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Erro ao buscar funcionarios."));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    getFuncionarios();
+  }, []);
+
+  async function deleteFuncionarios(id) {
+    try {
+      await removerFuncionario(id);
+
+      await getFuncionarios();
+
+      toast.success("Funcionário desligado/excluído!");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Erro ao excluir o funcionario."));
+    }
+  }
+
+  const handleSaveFuncionario = async (dadosDoFormulario) => {
+    try {
+      const dadosFuncionario = {
+        ...dadosDoFormulario,
+        salario: Number(
+          String(dadosDoFormulario.salario)
+            .replace(/\./g, "")
+            .replace(",", "."),
+        ),
+      };
+
+      if (dadosFuncionario.id) {
+        await atualizarFuncionario(dadosFuncionario.id, dadosFuncionario);
+
+        toast.success("Dados atualizados com sucesso!");
+      } else {
+        await cadastrarFuncionario(dadosFuncionario);
+
+        toast.success("Novo funcionário cadastrado!");
+      }
+
+      setModalConfig({
+        isOpen: false,
+        funcionarioEditando: null,
+        modoVisualizacao: false,
+      });
+
+      await getFuncionarios();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+
+  const termoBusca = busca?.toLowerCase() || "";
+
+  const funcionariosFiltrados = funcionarios.filter(
+    (func) =>
+      func.nome?.toLowerCase().includes(termoBusca) ||
+      func.cargo?.toLowerCase().includes(termoBusca),
+  );
+
+  return (
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Funcionários</h1>
+
+          <p className="text-gray-500">Gerencie o cadastro da equipe</p>
+        </div>
+
+        <button
+          onClick={() =>
+            setModalConfig({
+              isOpen: true,
+              funcionarioEditando: null,
+              modoVisualizacao: false,
+            })
+          }
+          className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg"
+        >
+          <Plus size={20} />
+          Novo Funcionário
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4 border-b border-gray-50">
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+
+            <input
+              type="text"
+              placeholder="Buscar por nome ou cargo..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 text-[11px] uppercase text-gray-400 font-bold">
+              <tr>
+                <th className="px-6 py-4">Nome</th>
+                <th className="px-6 py-4 text-center">Cargo</th>
+                <th className="px-6 py-4">Telefone</th>
+                <th className="px-6 py-4">Admissao</th>
+                <th className="px-6 py-4">Emergencia</th>
+                <th className="px-6 py-4 text-center">Licencas</th>
+                <th className="px-6 py-4">Salário</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-right">Ações</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-gray-50 text-sm">
+              {isLoading ? (
+                <tr>
+                  <td colSpan="9" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-orange-500">
+                      <Loader2 size={32} className="animate-spin mb-2" />
+
+                      <p className="text-gray-500 font-medium text-sm">
+                        Carregando equipe...
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : funcionariosFiltrados.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="9"
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
+                    Nenhum funcionário encontrado.
+                  </td>
+                </tr>
+              ) : (
+                funcionariosFiltrados.map((func) => (
+                  <tr
+                    key={func.id}
+                    className="hover:bg-gray-50/50 transition-colors group"
+                  >
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-gray-700">{func.nome}</p>
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-3 py-1 bg-blue-50 rounded-full text-[10px] font-bold uppercase">
+                        {func.cargo}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4 text-gray-500">
+                      {func.telefone || "Não informado"}
+                    </td>
+
+                    <td className="px-6 py-4 text-gray-500">
+                      {formatarData(func.dataAdmissao)}
+                    </td>
+
+                    <td className="px-6 py-4 text-gray-500">
+                      <p className="font-medium text-gray-700">
+                        {func.contatoEmergenciaNome || "Nao informado"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {func.contatoEmergenciaTelefone || ""}
+                      </p>
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-2 py-1 rounded-lg text-[10px] font-bold bg-gray-100 text-gray-600">
+                        {func.licencas?.length || 0}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4 font-bold">
+                      {func.salario != null
+                        ? `R$ ${func.salario}`
+                        : "Não informado"}
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
+                          func.status === "Inativo"
+                            ? "bg-red-50 text-red-600"
+                            : func.status === "Férias"
+                              ? "bg-yellow-50 text-yellow-600"
+                              : "bg-emerald-50 text-emerald-600"
+                        }`}
+                      >
+                        {func.status || "Ativo"}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          title="Visualizar funcionário"
+                          aria-label={`Visualizar ${func.nome}`}
+                          onClick={() =>
+                            setModalConfig({
+                              isOpen: true,
+                              funcionarioEditando: func,
+                              modoVisualizacao: true,
+                            })
+                          }
+                          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <Eye size={18} />
+                        </button>
+
+                        <button
+                          type="button"
+                          title="Editar funcionário"
+                          aria-label={`Editar ${func.nome}`}
+                          onClick={() =>
+                            setModalConfig({
+                              isOpen: true,
+                              funcionarioEditando: func,
+                              modoVisualizacao: false,
+                            })
+                          }
+                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Pencil size={18} />
+                        </button>
+
+                        <button
+                          onClick={() => deleteFuncionarios(func.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <ModalFuncionario
+        isOpen={modalConfig.isOpen}
+        funcionarioEditando={modalConfig.funcionarioEditando}
+        modoVisualizacao={modalConfig.modoVisualizacao}
+        onClose={() =>
+          setModalConfig({
+            isOpen: false,
+            funcionarioEditando: null,
+            modoVisualizacao: false,
+          })
+        }
+        onSave={handleSaveFuncionario}
+      />
+    </div>
+  );
+}

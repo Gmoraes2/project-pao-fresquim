@@ -1,0 +1,11 @@
+.git
+.github
+.vscode
+.mvn
+client/node_modules
+client/.next
+server/target
+*.log
+.env
+**/.env
+**/.env.*

@@ -1,0 +1,35 @@
+services:
+  server:
+    build:
+      context: ./server
+    container_name: pao-fresquim-server
+    env_file:
+      - ./server/.env
+    environment:
+      SERVER_PORT: 8080
+      DDL_AUTO: none
+      APP_SCHEMA_MIGRATION_ENABLED: "false"
+      TRANSACTION_TIMEOUT_SECONDS: 20
+      JPA_QUERY_TIMEOUT_MS: 15000
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080/
+        NEXT_PUBLIC_API_TIMEOUT_MS: 25000
+        NEXT_PUBLIC_API_LOADING_DELAY_MS: 800
+    container_name: pao-fresquim-client
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:8080/
+      NEXT_PUBLIC_API_TIMEOUT_MS: 25000
+      NEXT_PUBLIC_API_LOADING_DELAY_MS: 800
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    restart: unless-stopped

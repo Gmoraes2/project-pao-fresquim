@@ -1,0 +1,33 @@
+package api_test.br.com.spring_boot_essentials.service;
+
+import api_test.br.com.spring_boot_essentials.exception.RecursoNaoEncontradoException;
+import api_test.br.com.spring_boot_essentials.model.ProdutoModel;
+import api_test.br.com.spring_boot_essentials.repository.ProdutoRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+public class ProdutoService {
+
+    @Autowired
+    private ProdutoRepository produtoRepository;
+
+    public ProdutoModel salvar(ProdutoModel produtoModel) {
+        return produtoRepository.save(produtoModel);
+    }
+
+    public void deletarProduto(Integer id){
+        ProdutoModel produto = produtoRepository.findById(id).orElseThrow(() -> 
+            new RecursoNaoEncontradoException("Produto não encontrado com ID: " + id));
+        
+        produtoRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoModel> listar() {
+        return produtoRepository.findAll();
+    }
+}
